@@ -7,7 +7,7 @@ You must test your agent's strength against a set of agents with known
 relative strength using tournament.py and include the results in your report.
 """
 import random
-
+import logging
 
 class Timeout(Exception):
     """Subclass base exception for code clarity."""
@@ -38,7 +38,109 @@ def custom_score(game, player):
     """
 
     # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    free_spaces = game.height * game.width - game.move_count
+
+    def heuristic_zero():
+        return own_moves - opp_moves
+
+    def heuristic_one():
+        return own_moves - 2 * opp_moves
+
+    def heuristic_two():
+        return float(((own_moves + 1)) / ((opp_moves + 1)))
+
+    def heuristic_three():
+        return float((2 * (own_moves + 1)) / ((opp_moves + 1)))
+
+    def heuristic_four():
+        return float((own_moves - (2*opp_moves))/free_spaces)
+
+    def heuristic_five():
+        """ Most Moves in Quadrant """
+        quadrant = quadrant_with_most_open_space(game)
+
+        corners = [(game.width - 1, 0), (0, 0), (0, game.height - 1), (game.width - 1, game.height - 1)]
+
+        pos = game.get_player_location(player)
+
+        sq_dist_from_corner = (corners[quadrant[0]][0] - game.get_player_location(player)[0]) ** 2 + \
+            (corners[quadrant[0]][1] - game.get_player_location(player)[1]) ** 2
+
+        return sq_dist_from_corner
+
+    def heuristic_six():
+        """ Longest Path Heuristic """
+        # do the following on a copy because we don't want to change
+        # the current game state
+        own_longest_path = get_longest_path_length(game.copy(), player)
+        opp_longest_path = get_longest_path_length(game.copy(), game.get_opponent(player))
+        path_difference = own_longest_path - opp_longest_path
+        #logging.debug('path_difference: ' + str(path_difference))
+        return path_difference
+
+    if free_spaces > 17:
+        return heuristic_zero()
+    else:
+        return heuristic_six()
+
+    # if free_spaces > 30:
+    #     return heuristic_zero()
+    # elif free_spaces > 17:
+    #     return heuristic_five()
+    # else:
+    #     return heuristic_six()
+    # return heuristic_five()
+
+
+def quadrant_with_most_open_space(game):
+
+    equator = int(game.width / 2)
+    prime_meridian = int(game.height / 2)
+
+    quadrant_1 = list()
+    quadrant_2 = list()
+    quadrant_3 = list()
+    quadrant_4 = list()
+
+    for space in game.get_blank_spaces():
+        if space[0] < equator and space[1] > prime_meridian:
+            quadrant_1.append(space)
+        elif space[0] < equator and space[1] < prime_meridian:
+            quadrant_2.append(space)
+        elif space[0] > equator and space[1] < prime_meridian:
+            quadrant_3.append(space)
+        elif space[0] > equator and space[1] > prime_meridian:
+            quadrant_4.append(space)
+
+    quadrants = [quadrant_1, quadrant_2, quadrant_3, quadrant_4]
+
+    most_moves_quadrant = max(enumerate(quadrants), key=lambda tup: len(tup[1]))
+
+    return most_moves_quadrant
+
+def get_longest_path_length(game, player):
+    opponent = game.get_opponent(player)
+    game._active_player = player
+    game._inactive_player = opponent
+    longest = 0
+
+    for move in game.get_legal_moves():
+        path_length = get_longest_path_length(game.forecast_move(move), player) + 1
+        if path_length > longest:
+            longest = path_length
+
+        if longest > 20:
+            logging.warning('Depth 20 reached on longest path')
+            return longest
+    return longest
 
 
 class CustomPlayer:
@@ -124,19 +226,60 @@ class CustomPlayer:
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
 
+        # check for no legal moves
+        if not game.get_legal_moves():
+            return (-1, -1)
+
+        # initializations
+        move = game.get_legal_moves()[0]
+        logging.debug('moves: ' + str(legal_moves))
+        logging.debug('initial move: ' + str(move))
+
+        # check if a move has not been made
+        # TODO: finish implementing this logic
+
+
+
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            pass
+            if self.method == "minimax":
+                if self.iterative:
+                    iterative_depth = 1
+                    while True:
+                        #logging.debug('Iterative Depth: ' + str(iterative_depth))
+                        _, move = self.minimax(game, iterative_depth)
+                        iterative_depth += 1
+                else:
+                    _, move = self.minimax(game, self.search_depth)
+
+            elif self.method == "alphabeta":
+                if self.iterative:
+                    iterative_depth = 1
+                    while True:
+                        #logging.debug('iterative_depth: ' + str(iterative_depth))
+                        _, move = self.alphabeta(game, iterative_depth)
+                        #logging.debug('move_choice: ' + str(move))
+
+                        iterative_depth += 1
+                else:
+                    _, move = self.alphabeta(game, self.search_depth)
+            #elif self.method == "montecarlo":
+
+
 
         except Timeout:
             # Handle any actions required at timeout, if necessary
-            pass
+            logging.debug("Ran out of time")
+            if self.iterative:
+                logging.debug("Depth: " + str(iterative_depth))
+            logging.debug("move: " + str(move))
+            return move
 
         # Return the best move from the last completed search iteration
-        raise NotImplementedError
+        return move
 
     def minimax(self, game, depth, maximizing_player=True):
         """Implement the minimax search algorithm as described in the lectures.
@@ -169,11 +312,48 @@ class CustomPlayer:
                 to pass the project unit tests; you cannot call any other
                 evaluation function directly.
         """
+        # logging.debug("Time Threshold: " + str(self.TIMER_THRESHOLD))
+        # logging.debug("Time Left: " + str(self.time_left()))
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
         # TODO: finish this function!
-        raise NotImplementedError
+        best_move = (int, int)
+
+        moves = game.get_legal_moves()
+
+        if len(moves) == 0 or depth == 0:
+            #logging.debug('score: ' + str(self.score(game,self)))
+            return self.score(game, self), game.get_player_location(self)
+
+        # max level - equivalent to max-value in the pseudocode
+        if maximizing_player:
+
+            v = float("-inf")
+
+            for move in moves:
+                #logging.debug("maximizing_player")
+                #logging.debug(move)
+                next_v = self.minimax(game.forecast_move(move), depth - 1, False)[0]
+                if next_v > v:
+                    v = next_v
+                    best_move = move
+                    #logging.debug('best_move: ' + str(best_move))
+                #logging.debug(v)
+            return v, best_move
+
+        # min level - equivalent to min-value in the pseudocode
+        else:
+
+            v = float("inf")   # stand in for +inf for the scale of our isolation game
+
+            for move in moves:
+                #logging.debug("minimizing_player")
+                next_v = self.minimax(game.forecast_move(move), depth - 1, True)[0]
+                if next_v < v:
+                    v = next_v
+                    best_move = move
+            return v, best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
@@ -213,8 +393,64 @@ class CustomPlayer:
                 to pass the project unit tests; you cannot call any other
                 evaluation function directly.
         """
+        #logging.debug('depth: ' + str(depth))
+        #logging.debug("Time Left: " + str(self.time_left())
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
         # TODO: finish this function!
-        raise NotImplementedError
+        #moves = game.get_legal_moves()
+
+        # if len(moves) == 0 or depth == 0: #(self.iterative and depth == 0):
+        #     #logging.debug('score: ' + str(self.score(game,self)))
+        #     return self.score(game, self), game.get_player_location(self)
+
+        if not game.get_legal_moves():
+            #logging.warning('AlphaBeta: No Legal Moves')
+            return game.utility(self), (-1, -1)
+        if depth == 0:
+            return self.score(game, self), (-1, -1)
+
+        else:
+            best_move = game.get_legal_moves()[0]
+            # max level - equivalent to max-value in the pseudocode
+            if maximizing_player:
+
+                v = float("-inf")
+
+                for move in game.get_legal_moves():
+                    #logging.debug("maximizing_player")
+                    #logging.debug('move: ' + str(move))
+                    #logging.debug('depth: ' + str(depth))
+                    next_v = self.alphabeta(game.forecast_move(move), depth - 1, alpha, beta, False)[0]
+
+                    if next_v > v:
+                        v = next_v
+                        best_move = move
+                    #logging.debug("v: " + str(v))
+                    if v >= beta:
+                        return v, best_move
+                    alpha = max(alpha, v)
+                    #logging.debug("alpha: " + str(alpha))
+                return v, best_move
+
+            # min level - equivalent to min-value in the pseudocode
+            else:
+
+                v = float("inf")   # stand in for +inf for the scale of our isolation game
+
+                for move in game.get_legal_moves():
+                    #logging.debug("minimizing_player")
+                    #logging.debug('move: ' + str(move))
+                    #logging.debug('depth: ' + str(depth))
+                    next_v = self.alphabeta(game.forecast_move(move), depth - 1, alpha, beta, True)[0]
+
+                    if next_v < v:
+                        v = next_v
+                        best_move = move
+                    #logging.debug("v: " + str(v))
+                    if v <= alpha:
+                        return v, best_move
+                    beta = min(beta, v)
+                    #logging.debug("beta: " + str(alpha))
+                return v, best_move

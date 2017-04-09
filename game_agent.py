@@ -8,6 +8,9 @@ relative strength using tournament.py and include the results in your report.
 """
 import random
 import logging
+import datetime
+import math
+from random import choice
 
 class Timeout(Exception):
     """Subclass base exception for code clarity."""
@@ -175,13 +178,20 @@ class CustomPlayer:
     """
 
     def __init__(self, search_depth=3, score_fn=custom_score,
-                 iterative=True, method='minimax', timeout=10.):
+                 iterative=True, method='minimax', timeout=10., montecarlo_max_moves=100,
+                 montecarlo_C=1.4):
         self.search_depth = search_depth
         self.iterative = iterative
         self.score = score_fn
         self.method = method
         self.time_left = None
         self.TIMER_THRESHOLD = timeout
+        self.montecarlo_board_states = []
+        self.montecarlo_plays ={}
+        self.montecarlo_wins = {}
+        self.montecarlo_max_moves = montecarlo_max_moves
+        self.iterative_depth = 1
+        self.montecarlo_C = montecarlo_C
 
     def get_move(self, game, legal_moves, time_left):
         """Search for the best move from the available legal moves and return a
@@ -226,12 +236,18 @@ class CustomPlayer:
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
 
+        # local variable for optimizations sake
+        legal_moves = game.get_legal_moves()
+
         # check for no legal moves
-        if not game.get_legal_moves():
+        if not legal_moves:
             return (-1, -1)
 
+        if len(legal_moves) == 1:
+            return legal_moves[0]
+
         # initializations
-        move = game.get_legal_moves()[0]
+        move = legal_moves[0]
         logging.debug('moves: ' + str(legal_moves))
         logging.debug('initial move: ' + str(move))
 
@@ -257,17 +273,55 @@ class CustomPlayer:
 
             elif self.method == "alphabeta":
                 if self.iterative:
-                    iterative_depth = 1
+                    self.iterative_depth = 1
                     while True:
                         #logging.debug('iterative_depth: ' + str(iterative_depth))
-                        _, move = self.alphabeta(game, iterative_depth)
+                        _, move = self.alphabeta(game, self.iterative_depth)
                         #logging.debug('move_choice: ' + str(move))
 
-                        iterative_depth += 1
+                        self.iterative_depth += 1
                 else:
                     _, move = self.alphabeta(game, self.search_depth)
-            #elif self.method == "montecarlo":
+            elif self.method == "montecarlo":
+                self.iterative_depth = 0
+                # self.timeout = 15
+                player = game.active_player
 
+                games = 0
+                begin = datetime.datetime.utcnow()
+                while self.time_left() >= self.TIMER_THRESHOLD + 20:
+                    self.run_monte_carlo_simulation(game)
+                    games += 1
+
+                moves_states = [(m, game.forecast_move(m).hash()) for m in legal_moves]
+
+                # Display the number of call of `run_simulation` and the time elapsed
+                logging.debug('Games: ' + str(games) + ' Time Elapsed: ' + str(datetime.datetime.utcnow() - begin))
+
+                # Pick the move with highest percentage of wins
+                # m, S = moves_states[0]
+                # if self.montecarlo_wins.get((player, S), 0):
+                #     print('match_found')
+
+                percent_wins, move = max(
+                    (self.montecarlo_wins.get((player, S), 0) /
+                     self.montecarlo_plays.get((player, S), 1),
+                      m)
+                    for m, S in moves_states
+                )
+
+                # Display the stats for each possible play
+                for x in sorted(
+                        ((100 * self.montecarlo_wins.get((player, S), 0) /
+                          self.montecarlo_plays.get((player, S), 1),
+                          self.montecarlo_wins.get((player, S), 0),
+                          self.montecarlo_plays.get((player, S), 0), m)
+                            for m, S in moves_states),
+                    reverse=True
+                ):
+                    logging.debug("{3}: {0:.2f}% ({1} / {2})".format(*x))
+
+                logging.debug("Maximum depth searched: " + str(self.iterative_depth))
 
 
         except Timeout:
@@ -323,7 +377,7 @@ class CustomPlayer:
         moves = game.get_legal_moves()
 
         if len(moves) == 0 or depth == 0:
-            #logging.debug('score: ' + str(self.score(game,self)))
+            # logging.debug('score: ' + str(self.score(game,self)))
             return self.score(game, self), game.get_player_location(self)
 
         # max level - equivalent to max-value in the pseudocode
@@ -348,7 +402,7 @@ class CustomPlayer:
             v = float("inf")   # stand in for +inf for the scale of our isolation game
 
             for move in moves:
-                #logging.debug("minimizing_player")
+                # logging.debug("minimizing_player")
                 next_v = self.minimax(game.forecast_move(move), depth - 1, True)[0]
                 if next_v < v:
                     v = next_v
@@ -454,3 +508,79 @@ class CustomPlayer:
                     beta = min(beta, v)
                     #logging.debug("beta: " + str(alpha))
                 return v, best_move
+
+    # def montecarlo_choose_move(self, move_states):
+    #     legal_moves[randint(0, len(legal_moves) - 1)]
+    #
+    #     return move, state
+
+    def run_monte_carlo_simulation(self, game):
+        # some optimization with local variable lookups instead of attribute lookups
+        plays, wins = self.montecarlo_plays, self.montecarlo_wins
+
+        visited_states = set()
+        # game_states = [game]
+        # state = game_states[-1]
+        state = game
+        player = game.active_player
+
+        expand = True
+        for t in range(1, self.montecarlo_max_moves + 1):
+            legal_moves = state.get_legal_moves()
+            moves_states = [(m, state.forecast_move(m).hash(), state.forecast_move(m)) for m in legal_moves]
+            #moves_states_hashed = [(m, state.forecast_move(m).hash()) for m in legal_moves]
+
+            if all(plays.get((player, Sh)) for m, Sh, S in moves_states):
+                # if we have stats on all of the legal moves here, use them
+                log_total = math.log(
+                    sum(plays[(player, Sh)] for m, Sh, S in moves_states))
+
+                value, move, _, state = max(
+                    ((wins[(player, Sh)] / plays[(player, Sh)]) +
+                     self.montecarlo_C * math.sqrt(log_total / plays[(player, Sh)]), m, Sh, S)
+                    for m, Sh, S in moves_states
+                )
+            else:
+                # otherwise make an arbitrary decision
+                move, _, state = choice(moves_states)
+
+            # move = choice(game.get_legal_moves())
+            # state = game.forecast_move(move)
+            #game_states.append(state)
+
+            # `player` here and below refers to the player
+            # who moved into that particular state
+            if expand and (player, state.hash()) not in plays:
+                expand = False
+
+                plays[(player, state.hash())] = 0
+                wins[(player, state.hash())] = 0
+                if t > self.iterative_depth:
+                    self.iterative_depth = t
+
+            visited_states.add((player, state.hash()))
+
+            # check to see if the player that made the move just won
+            winner = None
+            if state.is_winner(player):
+                winner = player
+            elif state.is_loser(player):
+                winner = game.get_opponent(player)
+
+            # set the player to the player who will be making the next move
+            player = state.active_player
+
+            # if there is a winner this turn, no need to simulate longer
+            if winner:
+                break
+
+        # collect the statistics for the simulation
+        for player, state in visited_states:
+            if (player, state) not in plays:
+                continue
+            plays[(player, state)] += 1
+            if player == winner:
+                wins[(player, state)] += 1
+
+        #self.montecarlo_plays = plays
+        #self.montecarlo_wins = wins

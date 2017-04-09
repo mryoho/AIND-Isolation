@@ -13,7 +13,7 @@ from game_agent import CustomPlayer
 from game_agent import custom_score
 
 NUM_MATCHES = 5  # number of matches against each opponent
-TIME_LIMIT = 150000  # number of milliseconds before timeout
+TIME_LIMIT = 150  # number of milliseconds before timeout
 
 Agent = namedtuple("Agent", ["player", "name"])
 
@@ -42,7 +42,7 @@ def play_game(player1, player2):
 
 
 def main():
-    CUSTOM_ARGS = {"method": 'alphabeta', 'iterative': False}
+    CUSTOM_ARGS = {"method": 'montecarlo', 'iterative': False}
 
     student = Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS), "ID_Improved")
     improved = Agent(CustomPlayer(score_fn=improved_score, **CUSTOM_ARGS), "Student")

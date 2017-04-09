@@ -150,7 +150,8 @@ def main():
                   ("Improved", improved_score)]
     AB_ARGS = {"search_depth": 5, "method": 'alphabeta', "iterative": False}
     MM_ARGS = {"search_depth": 3, "method": 'minimax', "iterative": False}
-    CUSTOM_ARGS = {"method": 'montecarlo', 'iterative': True}
+    CUSTOM_ARGS_ID = {"method": 'alphabeta', 'iterative': True}
+    CUSTOM_ARGS_STU = {"method": 'montecarlo', 'iterative': True}
 
     # Create a collection of CPU agents using fixed-depth minimax or alpha beta
     # search, or random selection.  The agent names encode the search method
@@ -168,20 +169,20 @@ def main():
     # systems; i.e., the performance of the student agent is considered
     # relative to the performance of the ID_Improved agent to account for
     # faster or slower computers.
-    test_agents = [Agent(CustomPlayer(score_fn=improved_score, **CUSTOM_ARGS), "ID_Improved"),
-                   Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS), "Student")]
-    test_agents2 = [Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS), "ID_Improved")]
-    test_agents3 = [Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS), "Student")]
+    test_agents = [Agent(CustomPlayer(score_fn=improved_score, **CUSTOM_ARGS_ID), "ID_Improved"),
+                   Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS_STU), "Student")]
+    test_agents2 = [Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS_ID), "ID_Improved")]
+    test_agents3 = [Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS_STU), "Student")]
 
     print(DESCRIPTION)
-    for agentUT in test_agents3:
+    for agentUT in test_agents:
         print("")
         print("*************************")
         print("{:^25}".format("Evaluating: " + agentUT.name))
         print("*************************")
 
-        #agents = random_agents + mm_agents + ab_agents + [agentUT]
-        agents = test_agents2 + [agentUT]
+        agents = random_agents + mm_agents + ab_agents + [agentUT]
+        #agents = test_agents2 + [agentUT]
         win_ratio = play_round(agents, NUM_MATCHES)
 
         print("\n\nResults:")

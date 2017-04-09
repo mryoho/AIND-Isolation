@@ -328,7 +328,7 @@ class CustomPlayer:
             # Handle any actions required at timeout, if necessary
             logging.debug("Ran out of time")
             if self.iterative:
-                logging.debug("Depth: " + str(iterative_depth))
+                logging.debug("Depth: " + str(self.iterative_depth))
             logging.debug("move: " + str(move))
             return move
 

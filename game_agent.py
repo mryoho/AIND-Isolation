@@ -89,10 +89,10 @@ def custom_score(game, player):
         #logging.debug('path_difference: ' + str(path_difference))
         return path_difference
 
-    if free_spaces > 17:
-        return heuristic_zero()
-    else:
-        return heuristic_six()
+    # if free_spaces > 17:
+    #     return heuristic_three()
+    # else:
+    #     return heuristic_six()
 
     # if free_spaces > 30:
     #     return heuristic_zero()
@@ -100,7 +100,7 @@ def custom_score(game, player):
     #     return heuristic_five()
     # else:
     #     return heuristic_six()
-    # return heuristic_five()
+    return heuristic_three()
 
 
 def quadrant_with_most_open_space(game):
@@ -178,7 +178,7 @@ class CustomPlayer:
     """
 
     def __init__(self, search_depth=3, score_fn=custom_score,
-                 iterative=True, method='minimax', timeout=10., montecarlo_max_moves=100,
+                 iterative=True, method='minimax', timeout=14., montecarlo_max_moves=100,
                  montecarlo_C=1.4):
         self.search_depth = search_depth
         self.iterative = iterative
@@ -231,7 +231,7 @@ class CustomPlayer:
         self.time_left = time_left
 
         # TODO: finish this function!
-
+        logging.debug('Active Player: ' + str(game.active_player))
         # Perform any required initializations, including selecting an initial
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
@@ -289,7 +289,7 @@ class CustomPlayer:
 
                 games = 0
                 begin = datetime.datetime.utcnow()
-                while self.time_left() >= self.TIMER_THRESHOLD + 20:
+                while self.time_left() >= self.TIMER_THRESHOLD + 18:
                     self.run_monte_carlo_simulation(game)
                     games += 1
 
@@ -333,6 +333,7 @@ class CustomPlayer:
             return move
 
         # Return the best move from the last completed search iteration
+        logging.debug("move: " + str(move))
         return move
 
     def minimax(self, game, depth, maximizing_player=True):
@@ -519,9 +520,9 @@ class CustomPlayer:
         plays, wins = self.montecarlo_plays, self.montecarlo_wins
 
         visited_states = set()
-        # game_states = [game]
-        # state = game_states[-1]
-        state = game
+        game_states = [game]
+        state = game_states[-1]
+        #state = game
         player = game.active_player
 
         expand = True
@@ -543,10 +544,22 @@ class CustomPlayer:
             else:
                 # otherwise make an arbitrary decision
                 move, _, state = choice(moves_states)
+                # logging.debug('Montecarlo Else')
+                # best_val = float("-inf")
+                # for m, Sh, S in moves_states:
+                #     val = self.score(S, player)
+                #     if val > best_val:
+                #         best_val = val
+                #         move = m
+                #         state = S
+                # value, move, _, state = max(
+                #     (self.score(S, player), m, Sh, S) for m, Sh, S in moves_states
+                # )
+
 
             # move = choice(game.get_legal_moves())
             # state = game.forecast_move(move)
-            #game_states.append(state)
+            game_states.append(state)
 
             # `player` here and below refers to the player
             # who moved into that particular state
@@ -579,7 +592,7 @@ class CustomPlayer:
             if (player, state) not in plays:
                 continue
             plays[(player, state)] += 1
-            if player == winner:
+            if player != winner:
                 wins[(player, state)] += 1
 
         #self.montecarlo_plays = plays

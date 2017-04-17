@@ -171,18 +171,18 @@ def main():
     # faster or slower computers.
     test_agents = [Agent(CustomPlayer(score_fn=improved_score, **CUSTOM_ARGS_ID), "ID_Improved"),
                    Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS_STU), "Student")]
-    test_agents2 = [Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS_ID), "ID_Improved")]
+    test_agents2 = [Agent(CustomPlayer(score_fn=improved_score, **CUSTOM_ARGS_ID), "ID_Improved")]
     test_agents3 = [Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS_STU), "Student")]
 
     print(DESCRIPTION)
-    for agentUT in test_agents:
+    for agentUT in test_agents3:
         print("")
         print("*************************")
         print("{:^25}".format("Evaluating: " + agentUT.name))
         print("*************************")
 
-        agents = random_agents + mm_agents + ab_agents + [agentUT]
-        #agents = test_agents2 + [agentUT]
+        #agents = random_agents + mm_agents + ab_agents + [agentUT]
+        agents = test_agents2 + [agentUT]
         win_ratio = play_round(agents, NUM_MATCHES)
 
         print("\n\nResults:")

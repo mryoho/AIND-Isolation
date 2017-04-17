@@ -42,10 +42,11 @@ def play_game(player1, player2):
 
 
 def main():
-    CUSTOM_ARGS = {"method": 'montecarlo', 'iterative': False}
+    CUSTOM_ARGS = {"method": 'alphabeta', 'iterative': True}
+    CUSTOM_ARGS_STU = {"method": 'montecarlo', 'iterative': False}
 
-    student = Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS), "ID_Improved")
-    improved = Agent(CustomPlayer(score_fn=improved_score, **CUSTOM_ARGS), "Student")
+    improved = Agent(CustomPlayer(score_fn=improved_score, **CUSTOM_ARGS), "ID_Improved")
+    student = Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS_STU), "Student")
 
     play_game(student.player, improved.player)
 

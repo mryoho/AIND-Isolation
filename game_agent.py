@@ -283,45 +283,56 @@ class CustomPlayer:
                 else:
                     _, move = self.alphabeta(game, self.search_depth)
             elif self.method == "montecarlo":
-                self.iterative_depth = 0
-                # self.timeout = 15
-                player = game.active_player
+                free_spaces = game.height * game.width - game.move_count
+                if self.iterative and free_spaces > 10:
+                    self.iterative_depth = 1
+                    while True:
+                        # logging.debug('iterative_depth: ' + str(iterative_depth))
+                        _, move = self.alphabeta(game, self.iterative_depth)
+                        # logging.debug('move_choice: ' + str(move))
 
-                games = 0
-                begin = datetime.datetime.utcnow()
-                while self.time_left() >= self.TIMER_THRESHOLD + 18:
-                    self.run_monte_carlo_simulation(game)
-                    games += 1
+                        self.iterative_depth += 1
+                else:
 
-                moves_states = [(m, game.forecast_move(m).hash()) for m in legal_moves]
+                    self.iterative_depth = 0
+                    # self.timeout = 15
+                    player = game.active_player
 
-                # Display the number of call of `run_simulation` and the time elapsed
-                logging.debug('Games: ' + str(games) + ' Time Elapsed: ' + str(datetime.datetime.utcnow() - begin))
+                    games = 0
+                    begin = datetime.datetime.utcnow()
+                    while self.time_left() >= self.TIMER_THRESHOLD + 18:
+                        self.run_monte_carlo_simulation(game)
+                        games += 1
 
-                # Pick the move with highest percentage of wins
-                # m, S = moves_states[0]
-                # if self.montecarlo_wins.get((player, S), 0):
-                #     print('match_found')
+                    moves_states = [(m, game.forecast_move(m).hash()) for m in legal_moves]
 
-                percent_wins, move = max(
-                    (self.montecarlo_wins.get((player, S), 0) /
-                     self.montecarlo_plays.get((player, S), 1),
-                      m)
-                    for m, S in moves_states
-                )
+                    # Display the number of call of `run_simulation` and the time elapsed
+                    logging.debug('Games: ' + str(games) + ' Time Elapsed: ' + str(datetime.datetime.utcnow() - begin))
 
-                # Display the stats for each possible play
-                for x in sorted(
-                        ((100 * self.montecarlo_wins.get((player, S), 0) /
-                          self.montecarlo_plays.get((player, S), 1),
-                          self.montecarlo_wins.get((player, S), 0),
-                          self.montecarlo_plays.get((player, S), 0), m)
-                            for m, S in moves_states),
-                    reverse=True
-                ):
-                    logging.debug("{3}: {0:.2f}% ({1} / {2})".format(*x))
+                    # Pick the move with highest percentage of wins
+                    # m, S = moves_states[0]
+                    # if self.montecarlo_wins.get((player, S), 0):
+                    #     print('match_found')
 
-                logging.debug("Maximum depth searched: " + str(self.iterative_depth))
+                    percent_wins, move = max(
+                        (self.montecarlo_wins.get((player, S), 0) /
+                         self.montecarlo_plays.get((player, S), 1),
+                          m)
+                        for m, S in moves_states
+                    )
+
+                    # Display the stats for each possible play
+                    for x in sorted(
+                            ((100 * self.montecarlo_wins.get((player, S), 0) /
+                              self.montecarlo_plays.get((player, S), 1),
+                              self.montecarlo_wins.get((player, S), 0),
+                              self.montecarlo_plays.get((player, S), 0), m)
+                                for m, S in moves_states),
+                        reverse=True
+                    ):
+                        logging.debug("{3}: {0:.2f}% ({1} / {2})".format(*x))
+
+                    logging.debug("Maximum depth searched: " + str(self.iterative_depth))
 
 
         except Timeout:
@@ -592,7 +603,7 @@ class CustomPlayer:
             if (player, state) not in plays:
                 continue
             plays[(player, state)] += 1
-            if player != winner:
+            if player == winner:
                 wins[(player, state)] += 1
 
         #self.montecarlo_plays = plays

@@ -12,6 +12,8 @@ import datetime
 import math
 from random import choice
 
+COUNT = 0
+
 class Timeout(Exception):
     """Subclass base exception for code clarity."""
     pass
@@ -69,6 +71,12 @@ def custom_score(game, player):
     def heuristic_five():
         """ Most Moves in Quadrant """
         logging.debug(game.to_string())
+        global COUNT
+        #print(game.active_player)
+        if COUNT == 40:
+            if game.active_player == player:
+                print('Player 1 Move')
+            print(game.to_string())
         quadrant = quadrant_with_most_open_space(game)
 
         corners = [(0, game.width - 1), (0, 0), (game.height - 1, 0), (game.width - 1, game.height - 1)]
@@ -78,7 +86,13 @@ def custom_score(game, player):
         sq_dist_from_corner = (corners[quadrant[0]][0] - game.get_player_location(player)[0]) ** 2 + \
             (corners[quadrant[0]][1] - game.get_player_location(player)[1]) ** 2
 
-        return sq_dist_from_corner
+
+        COUNT += 1
+
+        # we want to choose the move that has the smallest squared distance. However, our algorithms choose the one
+        # with the biggest value, so we do the following: l x w - sq_dist_from_corner
+
+        return game.width * game.height - sq_dist_from_corner
 
     def heuristic_six():
         """ Longest Path Heuristic """
@@ -523,10 +537,6 @@ class CustomPlayer:
                     #logging.debug("beta: " + str(alpha))
                 return v, best_move
 
-    # def montecarlo_choose_move(self, move_states):
-    #     legal_moves[randint(0, len(legal_moves) - 1)]
-    #
-    #     return move, state
 
     def run_monte_carlo_simulation(self, game):
         # some optimization with local variable lookups instead of attribute lookups

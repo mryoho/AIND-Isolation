@@ -68,9 +68,10 @@ def custom_score(game, player):
 
     def heuristic_five():
         """ Most Moves in Quadrant """
+        logging.debug(game.to_string())
         quadrant = quadrant_with_most_open_space(game)
 
-        corners = [(game.width - 1, 0), (0, 0), (0, game.height - 1), (game.width - 1, game.height - 1)]
+        corners = [(0, game.width - 1), (0, 0), (game.height - 1, 0), (game.width - 1, game.height - 1)]
 
         pos = game.get_player_location(player)
 
@@ -100,7 +101,8 @@ def custom_score(game, player):
     #     return heuristic_five()
     # else:
     #     return heuristic_six()
-    return heuristic_three()
+    #return heuristic_three()
+    return heuristic_five()
 
 
 def quadrant_with_most_open_space(game):

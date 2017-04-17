@@ -43,7 +43,7 @@ def play_game(player1, player2):
 
 def main():
     CUSTOM_ARGS = {"method": 'alphabeta', 'iterative': True}
-    CUSTOM_ARGS_STU = {"method": 'montecarlo', 'iterative': False}
+    CUSTOM_ARGS_STU = {"method": 'alphabeta', 'iterative': True}
 
     improved = Agent(CustomPlayer(score_fn=improved_score, **CUSTOM_ARGS), "ID_Improved")
     student = Agent(CustomPlayer(score_fn=custom_score, **CUSTOM_ARGS_STU), "Student")
@@ -51,6 +51,6 @@ def main():
     play_game(student.player, improved.player)
 
 if __name__ == "__main__":
-    Log = logging.getLogger()
-    Log.setLevel(logging.DEBUG)
+    #Log = logging.getLogger()
+    #Log.setLevel(logging.DEBUG)
     main()
